@@ -25,7 +25,7 @@ export async function createUser(data: CreateUserDto) {
         throw conflict('User already exists');
     }
 
-    const slugPassed = data.slug ?? slug(data.name.trim().split(" ").join("-"), { lower: true });
+    const slugPassed = data.slug ?? slug(data.name, { lower: true, trim: true, replacement: '-' });
     if(!slugPassed) {
         throw conflict('Could not generate a slug for the user');
     }
