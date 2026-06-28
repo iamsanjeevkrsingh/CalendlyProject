@@ -5,6 +5,20 @@ import { DEFAULT_CHAR_LIMIT } from "../utils/constant.js";
 import { getById as getUserById } from "../repositories/user.repository.js";
 import { generateSlug, toSlugBase } from "./slug.service.js";
 
+async function generateCollisionFreeSlug(hostId: number, text: string) {
+    const slugPassed = generateSlug(text);
+    if (!slugPassed) {
+        throw conflict('Could not generate a slug for the event type');
+    }
+
+    const isSlugTaken = await slugExistsForHost(hostId, slugPassed);
+    if (isSlugTaken) {
+        throw conflict('An event type with this slug already exists, please use a different slug');
+    }
+
+    return slugPassed;
+}
+
 
 export async function listEventTypes(hostId: number) {
     const eventTypes = await findByHostId(hostId);
@@ -13,17 +27,7 @@ export async function listEventTypes(hostId: number) {
 
 export async function createEventType(hostId: number, data: CreateEventTypeDto) {
     const slugBase = data.slug ?? data.title;
-    const slugPassed = generateSlug(slugBase);
-
-    if(!slugPassed) {
-        throw conflict('Could not generate a slug for the event type');
-    }
-
-    const isSlugTaken = await slugExistsForHost(hostId, slugPassed);
-    if(isSlugTaken) {
-        throw conflict('A event type with this slug already exists, please use a different slug');
-    }
-
+    const slugPassed = await generateCollisionFreeSlug(hostId, slugBase);
     return create(hostId, {...data, slug: slugPassed});
 }
 
@@ -37,14 +41,7 @@ export async function updateEventType(hostId: number, id: number, data: UpdateEv
     }
 
     if(data.slug && toSlugBase(data.slug) !== eventType.slug.slice(0, -(DEFAULT_CHAR_LIMIT + 1))) {
-        const slugPassed = generateSlug(data.slug);
-        if(!slugPassed) {
-            throw conflict('Could not generate a slug for the event type');
-        }
-        const isSlugTaken = await slugExistsForHost(hostId, slugPassed);
-        if(!isSlugTaken) {
-            throw conflict('A event type with this slug already exists, please use a different slug');
-        }
+        const slugPassed = await generateCollisionFreeSlug(hostId, data.slug);
         data.slug = slugPassed;
     }
 
