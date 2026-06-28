@@ -1,8 +1,8 @@
-import slug from "slug";
 import { CreateEventTypeDto, UpdateEventTypeDto } from "../dtos/event-type.dto.js";
 import { create, findActiveByHostIdAndEventSlug, findByHostId, getById, remove, slugExistsForHost, update } from "../repositories/event-type.repository.js";
 import { conflict, forbidden, notFound } from "../utils/api-error.js";
 import { getById as getUserById } from "../repositories/user.repository.js";
+import { generateSlug } from "./slug.service.js";
 
 
 export async function listEventTypes(hostId: number) {
@@ -11,7 +11,7 @@ export async function listEventTypes(hostId: number) {
 }
 
 export async function createEventType(hostId: number, data: CreateEventTypeDto) {
-    const slugPassed = data.slug ?? slug(data.title, { lower: true });
+    const slugPassed = data.slug ?? generateSlug(data.title);
 
     if(!slugPassed) {
         throw conflict('Could not generate a slug for the event type');
