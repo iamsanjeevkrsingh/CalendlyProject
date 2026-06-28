@@ -1,8 +1,9 @@
 import { CreateEventTypeDto, UpdateEventTypeDto } from "../dtos/event-type.dto.js";
 import { create, findActiveByHostIdAndEventSlug, findByHostId, getById, remove, slugExistsForHost, update } from "../repositories/event-type.repository.js";
 import { conflict, forbidden, notFound } from "../utils/api-error.js";
+import { DEFAULT_CHAR_LIMIT } from "../utils/constant.js";
 import { getById as getUserById } from "../repositories/user.repository.js";
-import { generateSlug } from "./slug.service.js";
+import { generateSlug, toSlugBase } from "./slug.service.js";
 
 
 export async function listEventTypes(hostId: number) {
@@ -11,7 +12,8 @@ export async function listEventTypes(hostId: number) {
 }
 
 export async function createEventType(hostId: number, data: CreateEventTypeDto) {
-    const slugPassed = data.slug ?? generateSlug(data.title);
+    const slugBase = data.slug ?? data.title;
+    const slugPassed = generateSlug(slugBase);
 
     if(!slugPassed) {
         throw conflict('Could not generate a slug for the event type');
@@ -34,11 +36,16 @@ export async function updateEventType(hostId: number, id: number, data: UpdateEv
         throw forbidden('You are not authorized to update this event type');
     }
 
-    if(data.slug && data.slug !== eventType.slug) {
-        const isSlugTaken = await slugExistsForHost(hostId, data.slug);
-        if(isSlugTaken) {
+    if(data.slug && toSlugBase(data.slug) !== eventType.slug.slice(0, -(DEFAULT_CHAR_LIMIT + 1))) {
+        const slugPassed = generateSlug(data.slug);
+        if(!slugPassed) {
+            throw conflict('Could not generate a slug for the event type');
+        }
+        const isSlugTaken = await slugExistsForHost(hostId, slugPassed);
+        if(!isSlugTaken) {
             throw conflict('A event type with this slug already exists, please use a different slug');
         }
+        data.slug = slugPassed;
     }
 
     return update(id, data);
